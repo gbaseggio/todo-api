@@ -1,6 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var _ = require('underscore');
+var bcrypt = require('bcryptjs');
 var db = require('./db.js');
 var app = express();
 var PORT = process.env.PORT || 3000;
@@ -143,9 +144,34 @@ app.post('/users', function(req, res) {
 });
 
 // -----------------------------------------------------------------------------
+// POST /users/login
+// -----------------------------------------------------------------------------
+app.post('/users/login', function(req, res) {
+    var body = _.pick(req.body, 'email', 'password');
+    if(typeof body.email !== 'string' || typeof body.password !== 'string'){
+        return res.status(400).send();
+    }
+    
+    db.user.findOne({
+       where: {
+           email: body.email
+       } 
+    }).then(function(user){
+        if(!user || !bcrypt.compareSync(body.password, user.get('password_hash'))){
+            return res.status(401).send();
+        }
+        res.json(user.toPublicJSON()).send();
+    }, function(e){
+        return res.status(500).send();
+    });
+    
+});
+
+// -----------------------------------------------------------------------------
 // Sync DB and Start the server
 // -----------------------------------------------------------------------------
-db.sequelize.sync({force: true}).then( function () {
+//db.sequelize.sync({force: true}).then( function () {
+db.sequelize.sync().then( function () {
     console.log('DB synced.');
     app.listen(PORT, function(){
         console.log('Express listening on port: ' + PORT);
