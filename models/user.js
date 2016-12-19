@@ -55,13 +55,34 @@ module.exports = function (sequelize, DataTypes) {
                        } 
                     }).then(function(user){
                         if(!user || !bcrypt.compareSync(body.password, user.get('password_hash'))){
-                            return reject();
+                            reject();
                         }
                         resolve(user);
                     }, function(e){
-                        return reject();
+                        reject();
                     });                    
                 });    
+            },
+            findByToken: function(token) {
+                return new Promise(function(resolve, reject) {
+                    try {
+                        var decodedJWT = jwt.verify(token,'1q2w3e4r5t');
+                        var bytes = cryptojs.AES.decrypt(decodedJWT.token,'p123456!@#$');
+                        var tokenData = JSON.parse(bytes.toString(cryptojs.enc.Utf8));
+                        
+                        user.findById(tokenData.id).then(function(user){
+                            if(user){
+                                resolve(user);
+                            } else {
+                                reject();
+                            }
+                        },function(e){
+                            reject();
+                        });
+                    } catch(e){
+                        reject();
+                    }
+                });
             }
         },
         instanceMethods: {
